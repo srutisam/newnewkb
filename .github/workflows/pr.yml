@@ -1,0 +1,31 @@
+name: CI
+on:
+  pull_request:
+jobs:
+  build-deploy-test:
+    runs-on: ubuntu-latest
+    name: Build & Deploy to Minikube
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Start minikube
+      uses: medyagh/setup-minikube@latest
+
+    - name: Try the cluster
+      run: kubectl get pods -A
+
+    - name: Build image in minikube
+      run: |
+        minikube image build -t local/example:latest .
+
+    - name: Deploy to minikube
+      run: |
+        kubectl apply -f deploy/k8s.yaml
+        kubectl wait --for=condition=ready pod -l app=example --timeout=120s
+
+    - name: Test the service
+      run: |
+        minikube service list
+        minikube service example --url
+        echo "------------------opening the service------------------"
+        curl $(minikube service example --url)
